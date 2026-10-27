@@ -571,6 +571,7 @@
         });
 
         function saveSupabaseConfig() {
+            alert("La función saveSupabaseConfig se está ejecutando");
             const url = document.getElementById('cfg-url').value.trim();
             const key = document.getElementById('cfg-key').value.trim();
             if (!url || !key) return alert('Por favor rellena ambos parámetros.');
