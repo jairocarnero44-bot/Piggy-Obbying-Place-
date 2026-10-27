@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Piggy Obbying Place</title>
+    <!-- Supabase JS Client library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --bg-main: #0c0f12;
+            --bg-card: #151a21;
+            --bg-input: #1b222c;
+            --text-main: #f5f6f7;
+            --text-muted: #8a96a3;
+            --accent: #e51c23;
+            --accent-hover: #b71217;
+            --success: #4caf50;
+            
+            /* EToH Difficulty Colors */
+            --diff-easy: #75ec75;
+            --diff-medium: #ffff75;
+            --diff-hard: #ffaa44;
+            --diff-difficult: #ff5555;
+            --diff-extreme: #aa00aa;
+            --diff-insane: #5555ff;
+            --diff-remorseless: #333333;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding-bottom: 60px;
+        }
+
+        /* Setup / Config Overlay if Supabase is missing */
+        #config-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(12, 15, 18, 0.95);
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .config-box {
+            background: var(--bg-card);
+            padding: 30px;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 100%;
+            border: 1px solid #2d3748;
+        }
+        .config-box h2 { color: var(--accent); margin-bottom: 15px; }
+        .config-box p { font-size: 14px; color: var(--text-muted); margin-bottom: 20px; }
+        .config-box input {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg-input);
+            border: 1px solid #2d3748;
+            color: #fff;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+        .config-box button {
+            width: 100%;
+            padding: 12px;
+            background: var(--accent);
+            border: none;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .config-box button:hover { background: var(--accent-hover); }
+
+        /* Auth Screen */
+        #auth-screen {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .auth-container {
+            background: var(--bg-card);
+            padding: 40px;
+            border-radius: 8px;
+            max-width: 450px;
+            width: 100%;
+            border: 1px solid #2d3748;
+            text-align: center;
+        }
+        .auth-container h1 {
+            color: var(--text-main);
+            margin-bottom: 10px;
+            font-size: 28px;
+            letter-spacing: 1px;
+        }
+        .auth-container h1 span { color: var(--accent); }
+        .auth-container p { color: var(--text-muted); margin-bottom: 30px; }
+        .tab-buttons {
+            display: flex;
+            margin-bottom: 20px;
+            background: var(--bg-main);
+            border-radius: 4px;
+            padding: 4px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 4px;
+        }
+        .tab-btn.active {
+            background: var(--bg-card);
+            color: var(--text-main);
+            border: 1px solid #2d3748;
+        }
+        .auth-form input {
+            width: 100%;
+            padding: 14px;
+            background: var(--bg-input);
+            border: 1px solid #2d3748;
+            color: white;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+        .auth-form button {
+            width: 100%;
+            padding: 14px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .auth-form button:hover { background: var(--accent-hover); }
+        .auth-msg { color: #ff5555; margin-top: 15px; font-size: 14px; min-height: 20px; }
+
+        /* Navigation Bar */
+        nav {
+            background-color: var(--bg-card);
+            border-bottom: 1px solid #2d3748;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+        }
+        .logo { font-size: 22px; font-weight: bold; color: white; text-decoration: none; }
+        .logo span { color: var(--accent); }
+        .nav-menu { display: flex; list-style: none; gap: 20px; }
+        .nav-link { color: var(--text-muted); text-decoration: none; font-weight: 600; font-size: 15px; cursor: pointer; transition: color 0.2s; }
+        .nav-link:hover, .nav-link.active { color: var(--text-main); }
+        .nav-link.admin-indicator { color: #ffaa44; border: 1px solid #ffaa44; padding: 2px 8px; border-radius: 4px; }
+        .logout-btn { color: #ff5555; background: none; border: none; cursor: pointer; font-weight: 600; font-size: 15px; }
+
+        /* Main Workspace Wrapper */
+        .main-content { max-width: 1200px; margin: 30px auto; padding: 0 20px; display: none; }
+        .main-content.active { display: block; }
+
+        /* Search Component */
+        .search-container { margin-bottom: 30px; display: flex; gap: 15px; }
+        .search-input { flex: 1; padding: 14px; background: var(--bg-card); border: 1px solid #2d3748; border-radius: 6px; color: white; font-size: 16px; }
+
+        /* UI Blocks & Cards */
+        .grid-3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 13fr)); gap: 25px; }
+        .dashboard-header { background: var(--bg-card); border-radius: 8px; padding: 30px; border: 1px solid #2d3748; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
+        .user-meta h2 { font-size: 28px; color: #fff; margin-bottom: 5px; }
+        .user-badges { display: flex; gap: 15px; margin-top: 10px; }
+        .badge { background: var(--bg-input); padding: 6px 12px; border-radius: 20px; font-size: 14px; border: 1px solid #2d3748; font-weight: 600; }
+        .badge.exp { border-color: var(--accent); color: var(--accent); }
+
+        /* Forms inside Content modules */
+        .form-block { background: var(--bg-card); padding: 25px; border-radius: 8px; border: 1px solid #2d3748; margin-bottom: 30px; }
+        .form-block h3 { margin-bottom: 20px; color: #fff; border-left: 4px solid var(--accent); padding-left: 10px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 8px; font-size: 14px; color: var(--text-muted); font-weight: 600; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; background: var(--bg-input); border: 1px solid #2d3748; color: white; border-radius: 4px; font-size: 15px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .action-button { background: var(--accent); color: white; border: none; padding: 12px 25px; font-weight: bold; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; gap: 10px; }
+        .action-button:hover { background: var(--accent-hover); }
+
+        /* Tables & Leaderboards */
+        .leaderboard-table { width: 100%; border-collapse: collapse; background: var(--bg-card); border-radius: 8px; overflow: hidden; border: 1px solid #2d3748; margin-top: 15px; }
+        .leaderboard-table th { background: var(--bg-input); padding: 16px; text-align: left; font-size: 14px; text-transform: uppercase; color: var(--text-muted); font-weight: bold; border-bottom: 1px solid #2d3748; }
+        .leaderboard-table td { padding: 16px; border-bottom: 1px solid #1b222c; font-size: 15px; color: var(--text-main); }
+        .leaderboard-table tr:last-child td { border-bottom: none; }
+        .leaderboard-table tr:hover td { background: rgba(255, 255, 255, 0.02); cursor: pointer; }
+
+        /* Top 3 Visual Styling */
+        .rank-1 { background: rgba(255, 215, 0, 0.08) !important; font-weight: bold; }
+        .rank-1 td:first-child::before { content: '🥇 '; }
+        .rank-2 { background: rgba(192, 192, 192, 0.08) !important; font-weight: bold; }
+        .rank-2 td:first-child::before { content: '🥈 '; }
+        .rank-3 { background: rgba(205, 127, 50, 0.08) !important; font-weight: bold; }
+        .rank-3 td:first-child::before { content: '🥉 '; }
+
+        /* Difficulties System Elements */
+        .diff-tag { display: inline-block; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 12px; text-transform: uppercase; color: #000; }
+        .diff-tag.easy { background: var(--diff-easy); }
+        .diff-tag.medium { background: var(--diff-medium); }
+        .diff-tag.hard { background: var(--diff-hard); }
+        .diff-tag.difficult { background: var(--diff-difficult); color: #fff; }
+        .diff-tag.extreme { background: var(--diff-extreme); color: #fff; }
+        .diff-tag.insane { background: var(--diff-insane); color: #fff; }
+        .diff-tag.remorseless { background: var(--diff-remorseless); color: #fff; }
+
+        .diff-val { font-weight: 800; font-family: monospace; font-size: 15px; }
+
+        /* Card components */
+        .obby-card, .pack-card, .event-card { background: var(--bg-card); border: 1px solid #2d3748; border-radius: 8px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.2s; }
+        .obby-card:hover, .pack-card:hover { transform: translateY(-4px); }
+        .card-title { font-size: 18px; font-weight: bold; color: white; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .card-body { color: var(--text-muted); font-size: 14px; margin-bottom: 15px; flex-grow: 1; }
+        .card-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #2d3748; padding-top: 12px; margin-top: auto; }
+
+        /* Modal windows */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; padding: 20px; }
+        .modal.active { display: flex; }
+        .modal-content { background: var(--bg-card); border: 1px solid #2d3748; max-width: 600px; width: 100%; border-radius: 8px; padding: 30px; position: relative; }
+        .close-modal { position: absolute; top: 15px; right: 20px; font-size: 24px; color: var(--text-muted); cursor: pointer; }
+        .close-modal:hover { color: white; }
+
+        /* Mobile Optimization Rules */
+        @media (max-width: 768px) {
+            .nav-container { flex-direction: column; gap: 15px; text-align: center; }
+            .nav-menu { flex-wrap: wrap; justify-content: center; gap: 12px; }
+            .search-container { flex-direction: column; }
+            .form-row { grid-template-columns: 1fr; }
+            .dashboard-header { flex-direction: column; text-align: center; align-items: center; }
+            .user-badges { justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Connection config popup window -->
+    <div id="config-overlay">
+        <div class="config-box">
+            <h2>Configuración Supabase</h2>
+            <p>Conecta el proyecto a tu base de datos en la nube gratuita de Supabase para habilitar la persistencia global.</p>
+            <div class="form-group">
+                <label>SUPABASE_URL</label>
+                <input type="text" id="cfg-url" value="https://zerashicsgippnrymfve.supabase.co" placeholder="https://xyz.supabase.co">
+            </div>
+            <div class="form-group">
+                <label>SUPABASE_ANON_KEY</label>
+                <input type="text" id="cfg-key" value="sb_publishable_Dnt_eB1EEI1_YQ_vKVa11Q_2cFzMu6g" placeholder="Clave publicable de Supabase">
+            </div>
+            <button onclick="saveSupabaseConfig()">Conectar Plataforma</button>
+        </div>
+    </div>
+
+    <!-- User onboarding workflow panel -->
+    <div id="auth-screen" style="display:none;">
+        <div class="auth-container">
+            <h1>PIGGY <span>OBBYING PLACE</span></h1>
+            <p>Comunidad global unificada de Piggy Obbying</p>
+            
+            <div class="tab-buttons">
+                <button class="tab-btn active" id="tab-user" onclick="switchAuthTab('user')">Jugador / Creador</button>
+                <button class="tab-btn" id="tab-admin" onclick="switchAuthTab('admin')">Panel Administrador</button>
+            </div>
+
+            <div class="auth-form" id="form-user-mode">
+                <input type="text" id="auth-username" placeholder="Elige un Nombre de Usuario único">
+                <button onclick="handleUserLogin()">Registrarse / Entrar</button>
+            </div>
+
+            <div class="auth-form" id="form-admin-mode" style="display:none;">
+                <input type="password" id="auth-password" placeholder="Contraseña de Administrador">
+                <button onclick="handleAdminLogin()">Autenticar Administrador</button>
+            </div>
+
+            <div class="auth-msg" id="auth-error-output"></div>
+        </div>
+    </div>
+
+    <!-- App Top Navigation bar layout -->
+    <nav id="app-nav" style="display:none;">
+        <div class="nav-container">
+            <a class="logo" onclick="switchSection('home')">PIGGY<span>OP</span></a>
+            <ul class="nav-menu">
+                <li><a class="nav-link active" id="nl-home" onclick="switchSection('home')">Inicio</a></li>
+                <li><a class="nav-link" id="nl-players" onclick="switchSection('players')">Players</a></li>
+                <li><a class="nav-link" id="nl-builders" onclick="switchSection('builders')">Builders</a></li>
+                <li><a class="nav-link" id="nl-obbies" onclick="switchSection('obbies')">Obbies</a></li>
+                <li><a class="nav-link" id="nl-packs" onclick="switchSection('packs')">Packs</a></li>
+                <li><a class="nav-link" id="nl-events" onclick="switchSection('events')">Events</a></li>
+                <li><a class="nav-link admin-indicator" id="nl-admin" onclick="switchSection('admin')" style="display:none;">Admin Control</a></li>
+                <li><button class="logout-btn" onclick="terminateSession()">Salir</button></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- SECTION: HOME -->
+    <div id="sec-home" class="main-content">
+        <div class="dashboard-header">
+            <div class="user-meta">
+                <h2 id="home-welcome-title">Bienvenido, Aventurero</h2>
+                <p id="home-user-type">Rol: Miembro de la Comunidad</p>
+                <div class="user-badges">
+                    <div class="badge exp" id="badge-player-exp">EXP Jugador: 0</div>
+                    <div class="badge exp" id="badge-builder-exp" style="border-color: #4caf50; color: #4caf50;">EXP Creador: 0</div>
+                    <div class="badge" id="badge-hardest-clear">Obby más difícil: Ninguno</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-block">
+            <h3>🚀 Entregar un Nuevo Obby</h3>
+            <p style="color: var(--text-muted); margin-bottom: 20px; font-size:14px;">Envía tu creación para que sea revisada, valorada e incluida en los listados oficiales globales por el Administrador.</p>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Nombre del Obby</label>
+                    <input type="text" id="sub-obby-name" placeholder="Ej. Carnívorous Obby">
+                </div>
+                <div class="form-group">
+                    <label>Nombre del Creador (Debe ser tu usuario de la web)</label>
+                    <input type="text" id="sub-obby-author" readonly>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Dificultad Recomendada (Escala EToH)</label>
+                    <select id="sub-obby-diff">
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
+                        <option value="difficult">Difficult</option>
+                        <option value="extreme">Extreme</option>
+                        <option value="insane">Insane</option>
+                        <option value="remorseless">Remorseless</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Calidad Inicial propuesta</label>
+                    <select id="sub-obby-quality">
+                        <option value="F-">F-</option><option value="F">F</option><option value="F+">F+</option>
+                        <option value="D-">D-</option><option value="D">D</option><option value="D+">D+</option>
+                        <option value="C-">C-</option><option value="C" selected>C</option><option value="C+">C+</option>
+                        <option value="B-">B-</option><option value="B">B</option><option value="B+">B+</option>
+                        <option value="A-">A-</option><option value="A">A</option><option value="A+">A+</option>
+                        <option value="S-">S-</option><option value="S">S</option><option value="S+">S+</option>
+                        <option value="SS-">SS-</option><option value="SS">SS</option><option value="SS+">SS+</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Longitud / Duración estimada</label>
+                <select id="sub-obby-length">
+                    <option value="Super Corto">Super Corto (Menos de 1 minuto)</option>
+                    <option value="Corto">Corto (1-3 minutos)</option>
+                    <option value="Normal" selected>Normal (3-5 minutos)</option>
+                    <option value="Largo">Largo (5-15 minutos)</option>
+                    <option value="Super Largo">Super Largo (15-30 minutos)</option>
+                    <option value="Gigante">Gigante (+30 minutos)</option>
+                </select>
+            </div>
+            <button class="action-button" onclick="submitObbyForm()">Enviar Propuesta de Obby</button>
+        </div>
+    </div>
+
+    <!-- SECTION: PLAYERS -->
+    <div id="sec-players" class="main-content">
+        <div class="search-container">
+            <input type="text" class="search-input" id="search-players-field" placeholder="Buscar jugador por nombre..." oninput="renderPlayersList()">
+        </div>
+        <h2>Clasificación Oficial de Jugadores</h2>
+        <table class="leaderboard-table">
+            <thead>
+                <tr>
+                    <th>Posición</th>
+                    <th>Nombre Jugador</th>
+                    <th>Experiencia Acumulada</th>
+                    <th>Logro Máximo (Dificultad Pasada)</th>
+                </tr>
+            </thead>
+            <tbody id="table-players-body"></tbody>
+        </table>
+    </div>
+
+    <!-- SECTION: BUILDERS -->
+    <div id="sec-builders" class="main-content">
+        <div class="search-container">
+            <input type="text" class="search-input" id="search-builders-field" placeholder="Buscar creador por nombre..." oninput="renderBuildersList()">
+        </div>
+        <h2>Clasificación Oficial de Constructores</h2>
+        <table class="leaderboard-table">
+            <thead>
+                <tr>
+                    <th>Posición</th>
+                    <th>Nombre Creador</th>
+                    <th>Experiencia de Construcción</th>
+                </tr>
+            </thead>
+            <tbody id="table-builders-body"></tbody>
+        </table>
+    </div>
+
+    <!-- SECTION: OBBIES -->
+    <div id="sec-obbies" class="main-content">
+        <div class="search-container">
+            <input type="text" class="search-input" id="search-obbies-field" placeholder="Buscar obby por nombre o constructor..." oninput="renderObbiesList()">
+        </div>
+        <h2>Catálogo Colectivo de Obbies</h2>
+        <div class="grid-3" id="grid-obbies-container" style="margin-top:20px;"></div>
+    </div>
+
+    <!-- SECTION: PACKS -->
+    <div id="sec-packs" class="main-content">
+        <h2>Packs de Contenido Oficiales</h2>
+        <p style="color: var(--text-muted); margin-bottom:20px;">Completa todos los obbies asignados a un pack para recibir automáticamente un bono extraordinario de +500 EXP.</p>
+        <div class="grid-3" id="grid-packs-container"></div>
+    </div>
+
+    <!-- SECTION: EVENTS -->
+    <div id="sec-events" class="main-content">
+        <h2>Eventos de la Comunidad</h2>
+        <p style="color: var(--text-muted); margin-bottom:20px;">Mantente informado sobre las últimas competiciones activas dentro de Piggy Obbying Place.</p>
+        <div class="grid-3" id="grid-events-container">
+            <div class="event-card">
+                <div class="card-title">Torneo de Velocidad Oficial</div>
+                <div class="card-body">Demuestra tu agilidad completando mapas validados en el menor tiempo registrado. Sincronización competitiva próximamente disponible.</div>
+                <div class="card-footer"><span class="diff-tag easy">Activo</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTION: ADMIN PANEL -->
+    <div id="sec-admin" class="main-content">
+        <h2>Panel de Gestión Administrativa Autorizada</h2>
+        <p style="color: var(--text-muted); margin-bottom:30px;">Herramientas avanzadas para moderar envíos de la comunidad, dar altas y emitir certificaciones de completado.</p>
+
+        <!-- Dynamic Request Queue inbox -->
+        <div class="form-block">
+            <h3>Buzón de Entregas Pendientes</h3>
+            <div id="admin-inbox-wrapper"></div>
+        </div>
+
+        <!-- Add Complete Clear Status assignment tool -->
+        <div class="form-block">
+            <h3>Asignar Obby Completado a Jugador</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Seleccionar Usuario</label>
+                    <select id="adm-clear-user"></select>
+                </div>
+                <div class="form-group">
+                    <label>Seleccionar Obby Oficial</label>
+                    <select id="adm-clear-obby"></select>
+                </div>
+            </div>
+            <button class="action-button" onclick="assignObbyClearToUser()">Certificar y Otorgar Recompensas</button>
+        </div>
+
+        <!-- Create Official Game Packs tool -->
+        <div class="form-block">
+            <h3>Crear Pack de Desafío Oficial</h3>
+            <div class="form-group">
+                <label>Nombre del Pack</label>
+                <input type="text" id="adm-pack-name" placeholder="Ej. Desafío Extremo Alfa">
+            </div>
+            <div class="form-group">
+                <label>Dificultad Global del Pack</label>
+                <select id="adm-pack-diff">
+                    <option value="easy">Easy</option><option value="medium">Medium</option>
+                    <option value="hard">Hard</option><option value="difficult">Difficult</option>
+                    <option value="extreme">Extreme</option><option value="insane">Insane</option>
+                    <option value="remorseless">Remorseless</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Seleccionar Obbies Incluidos (Mantén presionado Ctrl / Cmd para seleccionar varios)</label>
+                <select id="adm-pack-obbies-select" multiple style="height:120px;"></select>
+            </div>
+            <button class="action-button" onclick="createChallengePack()">Publicar Pack Oficial</button>
+        </div>
+    </div>
+
+    <!-- DYNAMIC USER VIEW PROFILE MODAL -->
+    <div class="modal" id="profile-modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeProfileModal()">&times;</span>
+            <h2 id="pm-title" style="color:var(--accent); margin-bottom:5px;">Nombre de Usuario</h2>
+            <p id="pm-role" style="color:var(--text-muted); font-size:14px; margin-bottom:20px;">Rol: Jugador</p>
+            <div style="background:var(--bg-input); padding:15px; border-radius:6px; margin-bottom:15px; border:1px solid #2d3748;">
+                <p><strong>Experiencia de Juego:</strong> <span id="pm-pexp">0</span> EXP</p>
+                <p><strong>Experiencia de Creador:</strong> <span id="pm-bexp">0</span> EXP</p>
+                <p><strong>Récord de Dificultad superada:</strong> <span id="pm-hardest" class="diff-tag easy">Ninguno</span></p>
+            </div>
+            <h4 style="margin-bottom:10px;">Historial de Obbies Superados:</h4>
+            <div id="pm-clears-list" style="max-height:150px; overflow-y:auto; font-size:14px; color:var(--text-muted);"></div>
+        </div>
+    </div>
+
+    <!-- DYNAMIC OBBIES LIST VIEW MODAL -->
+    <div class="modal" id="obby-modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeObbyModal()">&times;</span>
+            <h2 id="om-name" style="margin-bottom:5px;">Nombre Obby</h2>
+            <p>Por: <span id="om-author" style="color:var(--accent); font-weight:bold;">Creador</span></p>
+            <div style="background:var(--bg-input); padding:15px; border-radius:6px; margin-top:15px; margin-bottom:15px; border:1px solid #2d3748; display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:14px;">
+                <div><strong>Dificultad Base:</strong> <span id="om-diff"></span></div>
+                <div><strong>Valor Específico:</strong> <span id="om-spec" style="color: #ffaa44; font-weight:bold;"></span></div>
+                <div><strong>Calidad Oficial:</strong> <span id="om-quality" style="color:#4caf50; font-weight:bold;"></span></div>
+                <div><strong>Longitud:</strong> <span id="om-length"></span></div>
+                <div><strong>Recompensa base:</strong> <span id="om-exp" style="color:var(--accent); font-weight:bold;"></span> EXP</div>
+                <div><strong>Verificador Oficial:</strong> <span id="om-verifier" style="font-weight:bold; color:#fff;">Nadie</span></div>
+            </div>
+            <h4 style="margin-bottom:10px;">Jugadores que lo han superado (<span id="om-clear-count">0</span>):</h4>
+            <div id="om-users-cleared" style="max-height:150px; overflow-y:auto; font-size:14px; color:var(--text-muted);"></div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT APP ARCHITECTURE SYSTEM ENGINE -->
+    <script>
+        let supabase = null;
+        let currentUser = null;
+        let isAdminSession = false;
+
+        // Global cache structures
+        let globalUsersCache = [];
+        let globalObbiesCache = [];
+        let globalSubmissionsCache = [];
+        let globalPacksCache = [];
+
+        // Quality value map to build exp for creators
+        const QUALITY_EXP_WEIGHT = {
+            'F-':10, 'F':20, 'F+':30, 'D-':50, 'D':70, 'D+':90,
+            'C-':120, 'C':150, 'C+':180, 'B-':230, 'B':280, 'B+':340,
+            'A-':420, 'A':500, 'A+':600, 'S-':750, 'S':900, 'S+':1100,
+            'SS-':1400, 'SS':1700, 'SS+':2100
+        };
+
+        // EToH order weight to calculate records
+        const ETOH_RANK_WEIGHT = { 'easy':1, 'medium':2, 'hard':3, 'difficult':4, 'extreme':5, 'insane':6, 'remorseless':7 };
+
+        window.addEventListener('load', () => {
+            const savedUrl = localStorage.getItem('pop_sb_url');
+            const savedKey = localStorage.getItem('pop_sb_key');
+            if (savedUrl && savedKey) {
+                document.getElementById('cfg-url').value = savedUrl;
+                document.getElementById('cfg-key').value = savedKey;
+                initializeSupabaseClient(savedUrl, savedKey);
+            }
+        });
+
+        function saveSupabaseConfig() {
+            const url = document.getElementById('cfg-url').value.trim();
+            const key = document.getElementById('cfg-key').value.trim();
+            if (!url || !key) return alert('Por favor rellena ambos parámetros.');
+            localStorage.setItem('pop_sb_url', url);
+            localStorage.setItem('pop_sb_key', key);
+            initializeSupabaseClient(url, key);
+        }
+
+        function initializeSupabaseClient(url, key) {
+            try {
+                if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+                    throw new Error('No se pudo cargar la biblioteca de Supabase. Comprueba tu conexión a Internet y recarga la página.');
+                }
+                if (!/^https:\/\//i.test(url)) {
+                    throw new Error('La URL debe empezar por https://');
+                }
+                supabase = window.supabase.createClient(url, key);
+                document.getElementById('config-overlay').style.display = 'none';
+                document.getElementById('auth-screen').style.display = 'flex';
+                checkSessionRecovery().catch(err => {
+                    console.error('Error al recuperar la sesión:', err);
+                    document.getElementById('auth-error-output').innerText = 'Conexión iniciada, pero no se pudo recuperar la sesión: ' + err.message;
+                });
+            } catch (err) {
+                console.error('Error de Supabase:', err);
+                alert('No se pudo conectar con Supabase: ' + err.message);
+            }
+        }
+
+        function switchAuthTab(type) {
+            document.getElementById('tab-user').classList.toggle('active', type === 'user');
+            document.getElementById('tab-admin').classList.toggle('active', type === 'admin');
+            document.getElementById('form-user-mode').style.display = type === 'user' ? 'block' : 'none';
+            document.getElementById('form-admin-mode').style.display = type === 'admin' ? 'block' : 'none';
+            document.getElementById('auth-error-output').innerText = '';
+        }
+
+        async function checkSessionRecovery() {
+            const storedUser = localStorage.getItem('pop_session_user');
+            const storedAdmin = localStorage.getItem('pop_session_is_admin');
+
+            if (storedAdmin === 'true') {
+                isAdminSession = true;
+                currentUser = { username: 'Administrador' };
+                await synchronizeSystemDatasets();
+                launchAppWorkspace();
+            } else if (storedUser) {
+                const { data, error } = await supabase.from('users').select('*').eq('username', storedUser).maybeSingle();
+                if (error) throw error;
+                if (data) {
+                    currentUser = data;
+                    isAdminSession = false;
+                    await synchronizeSystemDatasets();
+                    launchAppWorkspace();
+                } else {
+                    localStorage.removeItem('pop_session_user');
+                    localStorage.removeItem('pop_session_is_admin');
+                }
+            }
+        }
+
+        async function handleUserLogin() {
+            const inputName = document.getElementById('auth-username').value.trim();
+            const errorLabel = document.getElementById('auth-error-output');
+            errorLabel.innerText = '';
+
+            if (!inputName) {
+                errorLabel.innerText = 'Escribe un nombre de usuario.';
+                return;
+            }
+            if (inputName.length < 3) {
+                errorLabel.innerText = 'El nombre debe tener al menos 3 caracteres.';
+                return;
+            }
+            if (inputName.length > 24) {
+                errorLabel.innerText = 'El nombre no puede superar los 24 caracteres.';
+                return;
+            }
+            if (!/^[a-zA-Z0-9_ ]+$/.test(inputName)) {
+                errorLabel.innerText = 'Usa solo letras, números, espacios o guion bajo.';
+                return;
+            }
+            if (inputName.toLowerCase() === 'administrador') {
+                errorLabel.innerText = 'Ese nombre está reservado.';
+                return;
+            }
+            if (!supabase) {
+                errorLabel.innerText = 'Primero conecta la base de datos.';
+                return;
+            }
+
+            try {
+                const { data: existingUser, error: lookupError } = await supabase
+                    .from('users')
+                    .select('*')
+                    .ilike('username', inputName)
+                    .maybeSingle();
+
+                if (lookupError) throw lookupError;
+
+                if (existingUser) {
+                    currentUser = existingUser;
+                } else {
+                    const { data: newUser, error: createError } = await supabase
+                        .from('users')
+                        .insert([{
+                            username: inputName,
+                            player_exp: 0,
+                            builder_exp: 0,
+                            cleared_obbies: [],
+                            hardest_obby: 'Ninguno'
+                        }])
+                        .select()
+                        .single();
+
+                    if (createError) {
+                        if (createError.code === '23505') {
+                            errorLabel.innerText = 'Ese nombre ya está registrado. Prueba a entrar con el nombre exacto.';
+                        } else {
+                            errorLabel.innerText = 'No se pudo crear el usuario: ' + createError.message;
+                        }
+                        console.error('Error creando usuario:', createError);
+                        return;
+                    }
+                    currentUser = newUser;
+                }
+
+                isAdminSession = false;
+                localStorage.setItem('pop_session_user', currentUser.username);
+                localStorage.removeItem('pop_session_is_admin');
+                await synchronizeSystemDatasets();
+                launchAppWorkspace();
+            } catch (e) {
+                console.error('Error al entrar/registrarse:', e);
+                errorLabel.innerText = 'Error de Supabase: ' + (e.message || 'No se pudo comprobar el usuario.');
+            }
+        }
+
+        async function handleAdminLogin() {
+            const pass = document.getElementById('auth-password').value;
+            const errorLabel = document.getElementById('auth-error-output');
+            errorLabel.innerText = '';
+            if (pass === 'admin123') {
+                try {
+                    isAdminSession = true;
+                    currentUser = { username: 'Administrador' };
+                    localStorage.setItem('pop_session_is_admin', 'true');
+                    localStorage.removeItem('pop_session_user');
+                    await synchronizeSystemDatasets();
+                    launchAppWorkspace();
+                } catch (e) {
+                    console.error('Error al abrir el panel de administración:', e);
+                    errorLabel.innerText = 'No se pudo cargar el panel: ' + e.message;
+                }
+            } else {
+                errorLabel.innerText = 'Credencial de administración inválida.';
+            }
+        }
+
+        function terminateSession() {
+            localStorage.removeItem('pop_session_user');
+            localStorage.removeItem('pop_session_is_admin');
+            currentUser = null;
+            isAdminSession = false;
+            document.getElementById('app-nav').style.display = 'none';
+            const blocks = document.querySelectorAll('.main-content');
+            blocks.forEach(b => b.classList.remove('active'));
+            document.getElementById('auth-screen').style.display = 'flex';
+        }
+
+        async function synchronizeSystemDatasets() {
+            let { data: u } = await supabase.from('users').select('*');
+            globalUsersCache = u || [];
+            let { data: o } = await supabase.from('obbies').select('*').order('spec_difficulty', { ascending: false });
+            globalObbiesCache = o || [];
+            let { data: s } = await supabase.from('submissions').select('*');
+            globalSubmissionsCache = s || [];
+            let { data: p } = await supabase.from('packs').select('*');
+            globalPacksCache = p || [];
+
+            if (!isAdminSession && currentUser) {
+                const refreshedMe = globalUsersCache.find(x => x.username === currentUser.username);
+                if (refreshedMe) currentUser = refreshedMe;
+            }
+        }
+
+        function launchAppWorkspace() {
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('app-nav').style.display = 'block';
+            document.getElementById('nl-admin').style.display = isAdminSession ? 'inline-block' : 'none';
+            
+            document.getElementById('sub-obby-author').value = isAdminSession ? 'Administrador' : currentUser.username;
+            
+            updateHomeIdentityMetrics();
+            switchSection('home');
+            
+            // Periodically synchronize updates in background to catch up on other user changes
+            setInterval(async () => {
+                if (currentUser) {
+                    await synchronizeSystemDatasets();
+                    updateHomeIdentityMetrics();
+                    // Live refresh view depending on what section is currently viewed
+                    const activeSection = document.querySelector('.main-content.active');
+                    if (activeSection) {
+                        if (activeSection.id === 'sec-players') renderPlayersList();
+                        if (activeSection.id === 'sec-builders') renderBuildersList();
+                        if (activeSection.id === 'sec-obbies') renderObbiesList();
+                        if (activeSection.id === 'sec-packs') renderPacksList();
+                        if (activeSection.id === 'sec-admin') renderAdminDashboard();
+                    }
+                }
+            }, 6000);
+        }
+
+        function updateHomeIdentityMetrics() {
+            if (isAdminSession) {
+                document.getElementById('home-welcome-title').innerText = `Panel de Administración Operativo`;
+                document.getElementById('home-user-type').innerText = `Rol: Administrador Principal de Sistemas`;
+                document.getElementById('badge-player-exp').style.display = 'none';
+                document.getElementById('badge-builder-exp').style.display = 'none';
+                document.getElementById('badge-hardest-clear').style.display = 'none';
+            } else {
+                document.getElementById('badge-player-exp').style.display = 'inline-block';
+                document.getElementById('badge-builder-exp').style.display = 'inline-block';
+                document.getElementById('badge-hardest-clear').style.display = 'inline-block';
+                document.getElementById('home-welcome-title').innerText = `Hola de nuevo, ${currentUser.username}`;
+                document.getElementById('home-user-type').innerText = `Rol: Jugador / Creador de la Comunidad`;
+                document.getElementById('badge-player-exp').innerText = `EXP Jugador: ${currentUser.player_exp}`;
+                document.getElementById('badge-builder-exp').innerText = `EXP Creador: ${currentUser.builder_exp}`;
+                document.getElementById('badge-hardest-clear').innerText = `Obby más difícil: ${currentUser.hardest_obby || 'Ninguno'}`;
+            }
+        }
+
+        function switchSection(sectionId) {
+            const blocks = document.querySelectorAll('.main-content');
+            blocks.forEach(b => b.classList.remove('active'));
+            
+            const links = document.querySelectorAll('.nav-link');
+            links.forEach(l => l.classList.remove('active'));
+
+            document.getElementById(`sec-${sectionId}`).classList.add('active');
+            document.getElementById(`nl-${sectionId}`).classList.add('active');
+
+            if (sectionId === 'players') renderPlayersList();
+            if (sectionId === 'builders') renderBuildersList();
+            if (sectionId === 'obbies') renderObbiesList();
+            if (sectionId === 'packs') renderPacksList();
+            if (sectionId === 'admin') renderAdminDashboard();
+        }
+
+        /* RENDERING GENERATORS FOR USER VIEWS */
+        function renderPlayersList() {
+            const query = document.getElementById('search-players-field').value.toLowerCase();
+            const body = document.getElementById('table-players-body');
+            body.innerHTML = '';
+
+            let filtered = globalUsersCache.filter(u => u.username.toLowerCase().includes(query));
+            filtered.sort((a,b) => b.player_exp - a.player_exp);
+
+            filtered.forEach((u, index) => {
+                const tr = document.createElement('tr');
+                if (index === 0) tr.className = 'rank-1';
+                else if (index === 1) tr.className = 'rank-2';
+                else if (index === 2) tr.className = 'rank-3';
+
+                tr.onclick = () => showUserProfileModal(u.username);
+                tr.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td style="color:#fff; font-weight:600;">${u.username}</td>
+                    <td>${u.player_exp} EXP</td>
+                    <td><span class="diff-tag ${u.hardest_obby?.toLowerCase() || 'easy'}">${u.hardest_obby || 'Ninguno'}</span></td>
+                `;
+                body.appendChild(tr);
+            });
+        }
+
+        function renderBuildersList() {
+            const query = document.getElementById('search-builders-field').value.toLowerCase();
+            const body = document.getElementById('table-builders-body');
+            body.innerHTML = '';
+
+            let filtered = globalUsersCache.filter(u => u.username.toLowerCase().includes(query));
+            filtered.sort((a,b) => b.builder_exp - a.builder_exp);
+
+            filtered.forEach((u, index) => {
+                const tr = document.createElement('tr');
+                if (index === 0) tr.className = 'rank-1';
+                else if (index === 1) tr.className = 'rank-2';
+                else if (index === 2) tr.className = 'rank-3';
+
+                tr.onclick = () => showUserProfileModal(u.username);
+                tr.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td style="color:#fff; font-weight:600;">${u.username}</td>
+                    <td style="color:#4caf50; font-weight:bold;">${u.builder_exp} EXP</td>
+                `;
+                body.appendChild(tr);
+            });
+        }
+
+        function renderObbiesList() {
+            const query = document.getElementById('search-obbies-field').value.toLowerCase();
+            const container = document.getElementById('grid-obbies-container');
+            container.innerHTML = '';
+
+            let filtered = globalObbiesCache.filter(o => o.name.toLowerCase().includes(query) || o.author.toLowerCase().includes(query));
+
+            filtered.forEach((o) => {
+                const card = document.createElement('div');
+                card.className = 'obby-card';
+                card.onclick = () => showObbyModal(o.id);
+                card.innerHTML = `
+                    <div class="card-title">
+                        <span>${o.name} <span class="diff-val" style="color:var(--diff-${o.difficulty.toLowerCase()});">[${o.spec_difficulty}]</span></span>
+                        <span class="diff-tag ${o.difficulty.toLowerCase()}">${o.difficulty}</span>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Constructor:</strong> ${o.author}</p>
+                        <p><strong>Calidad:</strong> ${o.quality} | <strong>Duración:</strong> ${o.length}</p>
+                    </div>
+                    <div class="card-footer">
+                        <span style="font-size:12px; color:var(--text-muted);">Recompensa: +${o.exp_reward} EXP</span>
+                        <span style="font-size:12px; font-weight:bold; color:#fff;">✔ ${o.verifier || 'Nadie'}</span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function renderPacksList() {
+            const container = document.getElementById('grid-packs-container');
+            container.innerHTML = '';
+
+            globalPacksCache.forEach(p => {
+                const card = document.createElement('div');
+                card.className = 'pack-card';
+                
+                let listHtml = '';
+                p.obbies_included.forEach(oname => {
+                    listHtml += `<li style="margin-left:15px; font-size:13px; color:var(--text-main);">• ${oname}</li>`;
+                });
+
+                card.innerHTML = `
+                    <div class="card-title">
+                        <span>📦 ${p.name}</span>
+                        <span class="diff-tag ${p.difficulty.toLowerCase()}">${p.difficulty}</span>
+                    </div>
+                    <div class="card-body">
+                        <p style="margin-bottom:8px; font-weight:bold; font-size:12px; text-transform:uppercase; color:var(--accent);">Obbies Requeridos:</p>
+                        <ul style="list-style:none; margin-bottom:10px;">${listHtml}</ul>
+                    </div>
+                    <div class="card-footer">
+                        <span style="color:#4caf50; font-weight:bold; font-size:13px;">Bono: +500 EXP</span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        /* CLIENT SIDE PROPOSALS FLOW SUBMISSIONS */
+        async function submitObbyForm() {
+            const name = document.getElementById('sub-obby-name').value.trim();
+            const author = document.getElementById('sub-obby-author').value;
+            const difficulty = document.getElementById('sub-obby-diff').value;
+            const quality = document.getElementById('sub-obby-quality').value;
+            const length = document.getElementById('sub-obby-length').value;
+
+            if (!name) return alert('Por favor proporciona un nombre para el Obby.');
+
+            const payload = { name, author, difficulty, quality, length, created_at: new Date() };
+            const { error } = await supabase.from('submissions').insert([payload]);
+            
+            if (error) {
+                alert('Error al enviar propuesta.');
+            } else {
+                alert('¡Obby enviado con éxito al panel administrativo!');
+                document.getElementById('sub-obby-name').value = '';
+                await synchronizeSystemDatasets();
+            }
+        }
+
+        /* MODAL POPUPS VIEW PORTALS */
+        function showUserProfileModal(uname) {
+            const user = globalUsersCache.find(x => x.username === uname);
+            if (!user) return;
+
+            document.getElementById('pm-title').innerText = user.username;
+            document.getElementById('pm-role').innerText = `Miembro registrado de la Comunidad`;
+            document.getElementById('pm-pexp').innerText = user.player_exp;
+            document.getElementById('pm-bexp').innerText = user.builder_exp;
+            
+            const hardest = document.getElementById('pm-hardest');
+            hardest.className = `diff-tag ${(user.hardest_obby || 'easy').toLowerCase()}`;
+            hardest.innerText = user.hardest_obby || 'Ninguno';
+
+            const listCont = document.getElementById('pm-clears-list');
+            listCont.innerHTML = '';
+            if (!user.cleared_obbies || user.cleared_obbies.length === 0) {
+                listCont.innerText = 'No ha completado ningún obby validado aún.';
+            } else {
+                user.cleared_obbies.forEach(o => {
+                    const item = document.createElement('div');
+                    item.style.padding = '4px 0';
+                    item.innerHTML = `🏁 <strong>${o}</strong>`;
+                    listCont.appendChild(item);
+                });
+            }
+            document.getElementById('profile-modal').classList.add('active');
+        }
+
+        function closeProfileModal() { document.getElementById('profile-modal').classList.remove('active'); }
+
+        function showObbyModal(obbyId) {
+            const obby = globalObbiesCache.find(x => x.id === obbyId);
+            if (!obby) return;
+
+            document.getElementById('om-name').innerHTML = `${obby.name} <span class="diff-val" style="color:var(--diff-${obby.difficulty.toLowerCase()});">[${obby.spec_difficulty}]</span>`;
+            document.getElementById('om-author').innerText = obby.author;
+            
+            const tag = document.getElementById('om-diff');
+            tag.className = `diff-tag ${obby.difficulty.toLowerCase()}`;
+            tag.innerText = obby.difficulty;
+
+            document.getElementById('om-spec').innerText = obby.spec_difficulty;
+            document.getElementById('om-quality').innerText = obby.quality;
+            document.getElementById('om-length').innerText = obby.length;
+            document.getElementById('om-exp').innerText = obby.exp_reward;
+            document.getElementById('om-verifier').innerText = obby.verifier || 'Nadie';
+
+            const clearedUsers = globalUsersCache.filter(u => u.cleared_obbies && u.cleared_obbies.includes(obby.name));
+            document.getElementById('om-clear-count').innerText = clearedUsers.length;
+
+            const userList = document.getElementById('om-users-cleared');
+            userList.innerHTML = '';
+            if (clearedUsers.length === 0) {
+                userList.innerText = 'Nadie ha superado este mapa todavía.';
+            } else {
+                clearedUsers.forEach(u => {
+                    const div = document.createElement('div');
+                    div.style.padding = '3px 0';
+                    div.innerText = `👤 ${u.username}`;
+                    userList.appendChild(div);
+                });
+            }
+            document.getElementById('obby-modal').classList.add('active');
+        }
+
+        function closeObbyModal() { document.getElementById('obby-modal').classList.remove('active'); }
+
+        /* BACKOFFICE MANAGEMENT CONTROL DASHBOARD */
+        function renderAdminDashboard() {
+            if (!isAdminSession) return;
+
+            // Render Inbox Submissions Queue
+            const inbox = document.getElementById('admin-inbox-wrapper');
+            inbox.innerHTML = '';
+
+            if (globalSubmissionsCache.length === 0) {
+                inbox.innerHTML = '<p style="color: var(--text-muted); font-size:14px;">No hay propuestas de mapas pendientes de revisión.</p>';
+            } else {
+                globalSubmissionsCache.forEach(s => {
+                    const block = document.createElement('div');
+                    block.style.background = 'var(--bg-input)';
+                    block.style.padding = '15px';
+                    block.style.borderRadius = '6px';
+                    block.style.marginBottom = '15px';
+                    block.style.border = '1px solid #2d3748';
+
+                    block.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+                            <strong>${s.name} <span style="color:var(--text-muted); font-weight:normal;">por ${s.author}</span></strong>
+                            <div>
+                                <button class="action-button" style="background:#4caf50; padding:6px 12px; font-size:13px; margin-right:5px;" onclick="approveSubmissionWorkflow(${s.id})">Aceptar</button>
+                                <button class="action-button" style="background:#f44336; padding:6px 12px; font-size:13px;" onclick="rejectSubmissionWorkflow(${s.id})">Rechazar</button>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Dificultad Base</label>
+                                <select id="mod-diff-${s.id}">
+                                    <option value="easy" ${s.difficulty==='easy'?'selected':''}>Easy</option>
+                                    <option value="medium" ${s.difficulty==='medium'?'selected':''}>Medium</option>
+                                    <option value="hard" ${s.difficulty==='hard'?'selected':''}>Hard</option>
+                                    <option value="difficult" ${s.difficulty==='difficult'?'selected':''}>Difficult</option>
+                                    <option value="extreme" ${s.difficulty==='extreme'?'selected':''}>Extreme</option>
+                                    <option value="insane" ${s.difficulty==='insane'?'selected':''}>Insane</option>
+                                    <option value="remorseless" ${s.difficulty==='remorseless'?'selected':''}>Remorseless</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Calidad Valorada</label>
+                                <select id="mod-quality-${s.id}">
+                                    ${Object.keys(QUALITY_EXP_WEIGHT).map(q => `<option value="${q}" ${s.quality===q?'selected':''}>${q}</option>`).join('')}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Longitud Ajustada</label>
+                                <select id="mod-length-${s.id}">
+                                    <option value="Super Corto" ${s.length==='Super Corto'?'selected':''}>Super Corto</option>
+                                    <option value="Corto" ${s.length==='Corto'?'selected':''}>Corto</option>
+                                    <option value="Normal" ${s.length==='Normal'?'selected':''}>Normal</option>
+                                    <option value="Largo" ${s.length==='Largo'?'selected':''}>Largo</option>
+                                    <option value="Super Largo" ${s.length==='Super Largo'?'selected':''}>Super Largo</option>
+                                    <option value="Gigante" ${s.length==='Gigante'?'selected':''}>Gigante</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Dificultad Específica Decimal (0.0 - 20.0)</label>
+                                <input type="number" step="0.1" min="0" max="20" id="mod-spec-${s.id}" value="5.0">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Experiencia Otorgada (Al Pasárselo)</label>
+                            <input type="number" id="mod-exp-${s.id}" value="200">
+                        </div>
+                    `;
+                    inbox.appendChild(block);
+                });
+            }
+
+            // Bind selectors configuration options dynamically
+            const uSelect = document.getElementById('adm-clear-user');
+            uSelect.innerHTML = '';
+            globalUsersCache.forEach(u => {
+                uSelect.innerHTML += `<option value="${u.username}">${u.username}</option>`;
+            });
+
+            const oSelect = document.getElementById('adm-clear-obby');
+            oSelect.innerHTML = '';
+            globalObbiesCache.forEach(o => {
+                oSelect.innerHTML += `<option value="${o.name}">${o.name}</option>`;
+            });
+
+            const packObbySelect = document.getElementById('adm-pack-obbies-select');
+            packObbySelect.innerHTML = '';
+            globalObbiesCache.forEach(o => {
+                packObbySelect.innerHTML += `<option value="${o.name}">${o.name}</option>`;
+            });
+        }
+
+        async function approveSubmissionWorkflow(subId) {
+            const item = globalSubmissionsCache.find(x => x.id === subId);
+            if (!item) return;
+
+            const finalDiff = document.getElementById(`mod-diff-${subId}`).value;
+            const finalQuality = document.getElementById(`mod-quality-${subId}`).value;
+            const finalLength = document.getElementById(`mod-length-${subId}`).value;
+            const finalSpec = parseFloat(document.getElementById(`mod-spec-${subId}`).value) || 0;
+            const finalExp = parseInt(document.getElementById(`mod-exp-${subId}`).value) || 0;
+
+            const obbyRecord = {
+                name: item.name,
+                author: item.author,
+                difficulty: finalDiff,
+                quality: finalQuality,
+                length: finalLength,
+                spec_difficulty: finalSpec,
+                exp_reward: finalExp,
+                verifier: null
+            };
+
+            // Post validated item into live obbies listing table
+            const { error: insErr } = await supabase.from('obbies').insert([obbyRecord]);
+            if (insErr) return alert('Error al registrar obby en el catálogo oficial: ' + insErr.message);
+
+            // Award builder experience value seamlessly using quality weights map
+            const authorRecord = globalUsersCache.find(u => u.username.toLowerCase() === item.author.toLowerCase());
+            if (authorRecord) {
+                const addedExp = QUALITY_EXP_WEIGHT[finalQuality] || 0;
+                const newExp = (authorRecord.builder_exp || 0) + addedExp;
+                await supabase.from('users').update({ builder_exp: newExp }).eq('id', authorRecord.id);
+            }
+
+            // Purge item queue instance entry
+            await supabase.from('submissions').delete().eq('id', subId);
+
+            alert('¡Obby aceptado, catalogado y EXP otorgada al constructor!');
+            await synchronizeSystemDatasets();
+            renderAdminDashboard();
+        }
+
+        async function rejectSubmissionWorkflow(subId) {
+            if (!confirm('¿Estás seguro de rechazar esta propuesta de la comunidad?')) return;
+            await supabase.from('submissions').delete().eq('id', subId);
+            alert('Propuesta eliminada.');
+            await synchronizeSystemDatasets();
+            renderAdminDashboard();
+        }
+
+        async function assignObbyClearToUser() {
+            const username = document.getElementById('adm-clear-user').value;
+            const obbyName = document.getElementById('adm-clear-obby').value;
+
+            if (!username || !obbyName) return alert('Verifica las opciones de asignación.');
+
+            const user = globalUsersCache.find(x => x.username === username);
+            const obby = globalObbiesCache.find(x => x.name === obbyName);
+
+            if (!user || !obby) return;
+
+            let clears = user.cleared_obbies || [];
+            if (clears.includes(obbyName)) return alert('Este usuario ya tiene este obby registrado como completado.');
+
+            clears.push(obbyName);
+
+            // Calculate EToH highest record milestone update rule
+            let currentRecord = user.hardest_obby || 'Ninguno';
+            let currentWeight = ETOH_RANK_WEIGHT[currentRecord.toLowerCase()] || 0;
+            let incomingWeight = ETOH_RANK_WEIGHT[obby.difficulty.toLowerCase()] || 0;
+            let finalRecord = currentRecord;
+            if (incomingWeight >= currentWeight) {
+                finalRecord = obby.difficulty.charAt(0).toUpperCase() + obby.difficulty.slice(1);
+            }
+
+            // Calculate Base Cleared Reward experience increments
+            let totalExpGained = obby.exp_reward || 0;
+
+            // Evaluate challenge packs dynamic compliance criteria matrix logic loop
+            // Filter packs containing this newly cleared obby to check if the completion of this obby finishes the whole pack
+            globalPacksCache.forEach(p => {
+                const containsObby = p.obbies_included.includes(obbyName);
+                if (containsObby) {
+                    // Check if all OTHER obbies in the pack are already inside the user's clears list
+                    const completedAllOthers = p.obbies_included.every(neededObby => neededObby === obbyName || clears.includes(neededObby));
+                    // Double check that the user hadn't already finished the pack beforehand to prevent duplicate reward triggers
+                    const alreadyHadAllOthers = p.obbies_included.every(neededObby => neededObby === obbyName || (user.cleared_obbies && user.cleared_obbies.includes(neededObby)));
+                    
+                    if (completedAllOthers && !alreadyHadAllOthers) {
+                        totalExpGained += 500; // Inject structural +500 EXP Bonus
+                        alert(`¡Bono especial! El jugador ha completado el pack: "${p.name}" (+500 EXP adicionales).`);
+                    }
+                }
+            });
+
+            const finalExpScore = (user.player_exp || 0) + totalExpGained;
+
+            // Submit entity updates changes to profile state
+            await supabase.from('users').update({
+                cleared_obbies: clears,
+                hardest_obby: finalRecord,
+                player_exp: finalExpScore
+            }).eq('id', user.id);
+
+            // Verifier updates tracking logic validation clause check
+            if (!obby.verifier) {
+                await supabase.from('obbies').update({ verifier: username }).eq('id', obby.id);
+            }
+
+            alert('¡Certificación inyectada exitosamente!');
+            await synchronizeSystemDatasets();
+            renderAdminDashboard();
+        }
+
+        async function createChallengePack() {
+            const name = document.getElementById('adm-pack-name').value.trim();
+            const difficulty = document.getElementById('adm-pack-diff').value;
+            const selectOptions = document.getElementById('adm-pack-obbies-select').selectedOptions;
+
+            if (!name) return alert('Ingresa un nombre para el Pack.');
+            if (selectOptions.length === 0) return alert('Debes seleccionar al menos un obby oficial para integrar el pack.');
+
+            let selectedObbies = [];
+            for (let i = 0; i < selectOptions.length; i++) {
+                selectedObbies.push(selectOptions[i].value);
+            }
+
+            const packRecord = { name, difficulty, obbies_included: selectedObbies };
+            const { error } = await supabase.from('packs').insert([packRecord]);
+
+            if (error) {
+                alert('Error al publicar el pack.');
+            } else {
+                alert('¡Pack de Desafío Oficial publicado!');
+                document.getElementById('adm-pack-name').value = '';
+                await synchronizeSystemDatasets();
+                renderAdminDashboard();
+            }
+        }
+    </script>
+</body>
+</html>
